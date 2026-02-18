@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointment Assistant Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for chat window */
+        #chat-window::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-window::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        #chat-window::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .message-appear {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 h-screen flex items-center justify-center p-4">
+
+    <!-- Chat Container -->
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[600px]">
+        
+        <!-- Header -->
+        <div class="bg-blue-600 p-4 flex items-center gap-3">
+            <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-600 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-white font-bold text-lg">Calendar Bot</h1>
+                <p class="text-blue-100 text-xs">ผู้ช่วยนัดหมายอัจฉริยะ</p>
+            </div>
+        </div>
+
+        <!-- Chat Window -->
+        <div id="chat-window" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            <!-- Bot Welcome Message -->
+            <div class="flex justify-start message-appear">
+                <div class="bg-white text-gray-800 p-3 rounded-2xl rounded-tl-none shadow-sm max-w-[80%] border border-gray-100">
+                    สวัสดีครับ! ผมคือบอทช่วยนัดหมาย ไม่ทราบว่าคุณชื่ออะไรครับ?
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 bg-white border-t border-gray-100 flex gap-2">
+            <input type="text" id="user-input" 
+                class="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                placeholder="พิมพ์ข้อความที่นี่..."
+                autocomplete="off">
+            <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <path d="M3.478 2.405a.75.75 0 0 0-.926.94l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.405Z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        let step = 0;
+        const appointmentInfo = {
+            name: '',
+            subject: '',
+            date: '',
+            time: ''
+        };
+
+        const botMessages = [
+            (name) => `ยินดีที่ได้รู้จักครับคุณ ${name} 😊 ต้องการนัดหมายเกี่ยวกับเรื่องอะไรครับ?`,
+            () => `รับทราบครับ แล้วนัดหมายวันที่เท่าไหร่ดีครับ? (เช่น 25 มีนาคม 2024)`,
+            () => `สะดวกเป็นเวลากี่โมงครับ? (เช่น 14:00)`,
+            (info) => `สรุปข้อมูลนัดหมายของคุณ:<br><b>👤 ชื่อ:</b> ${info.name}<br><b>📝 เรื่อง:</b> ${info.subject}<br><b>📅 วันที่:</b> ${info.date}<br><b>⏰ เวลา:</b> ${info.time}<br><br>ข้อมูลถูกต้องไหมครับ? (ตอบ ใช่ เพื่อบันทึก)`
+        ];
+
+        function addMessage(text, isBot = true) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex ${isBot ? 'justify-start' : 'justify-end'} message-appear`;
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = isBot 
+                ? "bg-white text-gray-800 p-3 rounded-2xl rounded-tl-none shadow-sm max-w-[80%] border border-gray-100" 
+                : "bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md max-w-[80%]";
+            
+            msgDiv.innerHTML = text;
+            wrapper.appendChild(msgDiv);
+            chatWindow.appendChild(wrapper);
+            
+            // Scroll to bottom
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function processBotLogic(text) {
+            setTimeout(() => {
+                switch(step) {
+                    case 0:
+                        appointmentInfo.name = text;
+                        addMessage(botMessages[0](text));
+                        step++;
+                        break;
+                    case 1:
+                        appointmentInfo.subject = text;
+                        addMessage(botMessages[1]());
+                        step++;
+                        break;
+                    case 2:
+                        appointmentInfo.date = text;
+                        addMessage(botMessages[2]());
+                        step++;
+                        break;
+                    case 3:
+                        appointmentInfo.time = text;
+                        addMessage(botMessages[3](appointmentInfo));
+                        step++;
+                        break;
+                    case 4:
+                        if (text.includes("ใช่") || text.toLowerCase().includes("yes") || text.includes("ถูกต้อง")) {
+                            addMessage("✨ เรียบร้อยครับ! ผมได้บันทึกการนัดหมายของคุณลงในระบบจำลองแล้ว คุณจะได้รับการแจ้งเตือนเมื่อใกล้ถึงเวลาครับ");
+                            step = 5; // Reset or End
+                        } else {
+                            addMessage("โอ๊ะ! ขออภัยครับ งั้นเรามาเริ่มนัดหมายกันใหม่อีกครั้งนะครับ คุณชื่ออะไรครับ?");
+                            step = 0;
+                        }
+                        break;
+                    default:
+                        addMessage("หากต้องการนัดหมายใหม่ เพียงแค่พิมพ์ว่า 'เริ่ม' ได้เลยครับ");
+                        if (text === "เริ่ม") step = 0;
+                }
+            }, 800);
+        }
+
+        function handleSend() {
+            const text = userInput.value.trim();
+            if (text === "") return;
+
+            addMessage(text, false);
+            userInput.value = "";
+            processBotLogic(text);
+        }
+
+        sendBtn.addEventListener('click', handleSend);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSend();
+        });
+    </script>
+</body>
+</html>
